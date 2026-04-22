@@ -1,7 +1,8 @@
 FROM python:3.11-slim
 
+# hadolint ignore=DL3008
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends wget=1.21.3-1 && \
+    apt-get install -y --no-install-recommends wget && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
