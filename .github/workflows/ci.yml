@@ -43,11 +43,16 @@ jobs:
       working-directory: frontend
       run: npm run lint
 
+    - name: Install hadolint
+      run: |
+        curl -sSL https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 \
+          -o /usr/local/bin/hadolint && chmod +x /usr/local/bin/hadolint
+
     - name: Docker lint (hadolint)
       run: |
-        docker run --rm -i hadolint/hadolint hadolint api/Dockerfile
-        docker run --rm -i hadolint/hadolint hadolint frontend/Dockerfile
-        docker run --rm -i hadolint/hadolint hadolint worker/Dockerfile
+        hadolint api/Dockerfile
+        hadolint frontend/Dockerfile
+        hadolint worker/Dockerfile
 
     # -------------------
     # 3. TEST (Dockerized)
