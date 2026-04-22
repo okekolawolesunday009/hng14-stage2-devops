@@ -1,0 +1,171 @@
+name: Containerization with Docker CI/CD Pipeline
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+env:
+  REGISTRY: localhost:5000
+  TAG: ${{ github.sha }}
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+
+    steps:
+
+    # -------------------
+    # 1. Checkout
+    # -------------------
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    # -------------------
+    # 2. LINT
+    # -------------------
+    - name: Python lint (flake8)
+      run: |
+        pip install flake8
+        flake8 api/
+
+    - name: JS lint (eslint)
+      run: |
+        npm install
+        npx eslint frontend/
+
+    - name: Docker lint (hadolint)
+      run: |
+        docker run --rm -i ghcr.io/hadolint/hadolint < api/Dockerfile
+        docker run --rm -i ghcr.io/hadolint/hadolint < frontend/Dockerfile
+        docker run --rm -i ghcr.io/hadolint/hadolint < worker/Dockerfile
+
+    # -------------------
+    # 3. TEST (Dockerized)
+    # -------------------
+    - name: Build test image
+      run: docker build -t api-test ./api
+
+    - name: Run unit tests (pytest + mocked Redis)
+      run: docker run --rm api-test pytest --cov=app
+
+    - name: Upload coverage
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: coverage.xml
+
+    # -------------------
+    # 4. BUILD IMAGES
+    # -------------------
+    - name: Build images
+      run: |
+        docker build -t $REGISTRY/api:$TAG ./api
+        docker build -t $REGISTRY/frontend:$TAG ./frontend
+        docker build -t $REGISTRY/worker:$TAG ./worker
+
+    - name: Tag latest
+      run: |
+        docker tag $REGISTRY/api:$TAG $REGISTRY/api:latest
+        docker tag $REGISTRY/frontend:$TAG $REGISTRY/frontend:latest
+        docker tag $REGISTRY/worker:$TAG $REGISTRY/worker:latest
+
+    - name: Push images
+      run: |
+        docker push $REGISTRY/api:$TAG
+        docker push $REGISTRY/frontend:$TAG
+        docker push $REGISTRY/worker:$TAG
+
+    # -------------------
+    # 5. SECURITY SCAN (Trivy)
+    # -------------------
+    - name: Scan API image
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/api:${{ env.TAG }}
+        format: sarif
+        output: trivy-api.sarif
+        severity: CRITICAL
+        exit-code: 1
+
+    - name: Upload scan report
+      uses: actions/upload-artifact@v4
+      with:
+        name: trivy-report
+        path: trivy-api.sarif
+
+    # -------------------
+    # 6. INTEGRATION TEST (FIXED PORTS)
+    # -------------------
+    - name: Start full stack
+      run: docker compose up -d
+
+    - name: Wait for services
+      run: sleep 15
+
+    - name: API health check (8000)
+      run: curl -f http://localhost:8000/health
+
+    - name: Frontend check (3000)
+      run: curl -f http://localhost:3000
+
+    - name: Run integration test (job flow)
+      run: |
+        curl -X POST http://localhost:8000/job -d '{"task":"test"}'
+
+        for i in {1..12}; do
+          STATUS=$(curl -s http://localhost:8000/job/status)
+          if [ "$STATUS" = "completed" ]; then
+            echo "PASS"
+            exit 0
+          fi
+          sleep 5
+        done
+
+        echo "FAIL"
+        exit 1
+
+    - name: Tear down stack
+      if: always()
+      run: docker compose down
+
+  # -------------------
+  # 7. DEPLOY (MAIN ONLY)
+  # -------------------
+  deploy:
+    needs: pipeline
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Rolling deploy
+      run: |
+        docker pull localhost:5000/api:${{ github.sha }}
+
+        docker run -d \
+          --name new_api \
+          -p 8001:8000 \
+          localhost:5000/api:${{ github.sha }}
+
+        echo "Waiting for health check..."
+
+        for i in {1..12}; do
+          if curl -f http://localhost:8001/health; then
+            echo "Healthy → switching traffic"
+            docker stop old_api || true
+            docker rename new_api old_api
+            exit 0
+          fi
+          sleep 5
+        done
+
+        echo "Health failed → rollback"
+        docker stop new_api
+        exit 1
