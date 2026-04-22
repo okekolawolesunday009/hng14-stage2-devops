@@ -45,9 +45,9 @@ jobs:
 
     - name: Docker lint (hadolint)
       run: |
-        docker run --rm -i ghcr.io/hadolint/hadolint < api/Dockerfile
-        docker run --rm -i ghcr.io/hadolint/hadolint < frontend/Dockerfile
-        docker run --rm -i ghcr.io/hadolint/hadolint < worker/Dockerfile
+        docker run --rm -i hadolint/hadolint hadolint api/Dockerfile
+        docker run --rm -i hadolint/hadolint hadolint frontend/Dockerfile
+        docker run --rm -i hadolint/hadolint hadolint worker/Dockerfile
 
     # -------------------
     # 3. TEST (Dockerized)
