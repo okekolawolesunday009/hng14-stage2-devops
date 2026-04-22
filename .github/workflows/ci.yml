@@ -37,6 +37,7 @@ jobs:
 
     - name: JS lint (eslint)
       run: |
+        npm init -y
         npm install
         npx eslint frontend/
 
