@@ -60,6 +60,9 @@ jobs:
     - name: Build test image
       run: docker build -t api-test ./api
 
+    - name: Debug test discovery
+      run: docker run --rm api-test sh -c "find /app -name '*.py' | sort"
+
     - name: Run unit tests (pytest + mocked Redis)
       run: docker run --rm api-test pytest --cov=. --cov-report=xml
 
