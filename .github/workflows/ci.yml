@@ -99,7 +99,7 @@ jobs:
         path: ~/.cache/trivy
         key: trivy-db-${{ github.run_id }}
         restore-keys: trivy-db-
-        
+
     # -------------------
     # 5. SECURITY SCAN (Trivy)
     # -------------------
@@ -119,17 +119,17 @@ jobs:
       run: sleep 15
 
     - name: API health check (8000)
-      run: curl -f http://localhost:8000/health
+      run: curl -f http://localhost:8000/
 
     - name: Frontend check (3000)
       run: curl -f http://localhost:3000
 
     - name: Run integration test
       run: |
-        curl -X POST http://localhost:8000/job -d '{"task":"test"}'
+        curl -X POST http://localhost:8000/jobS -d '{"NAME":"test"}'
 
         for i in {1..12}; do
-          STATUS=$(curl -s http://localhost:8000/job/status)
+          STATUS=$(curl -s http://localhost:8000/jobs/status)
           if [ "$STATUS" = "completed" ]; then
             echo "PASS"
             exit 0
