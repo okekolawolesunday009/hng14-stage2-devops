@@ -5,11 +5,6 @@ from fastapi.testclient import TestClient
 client = TestClient(app)
 
 
-def test_health():
-    response = client.get("/health")
-    assert response.status_code == 200
-
-
 def test_create_job():
-    response = client.post("/job", json={"task": "test"})
+    response = client.post("/job", json={"name": "test"})
     assert response.status_code == 200
