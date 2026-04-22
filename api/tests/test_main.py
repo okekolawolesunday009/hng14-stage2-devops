@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient  # or whatever framework you're using
 
 client = TestClient(app)
 
+
 def test_health():
     response = client.get("/health")
     assert response.status_code == 200
