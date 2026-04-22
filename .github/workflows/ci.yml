@@ -37,13 +37,11 @@ jobs:
 
     - name: Install frontend dependencies
       working-directory: frontend
-      run: npm install
+      run: npm ci
 
     - name: Lint frontend
       working-directory: frontend
-      run: |
-        npm install eslint@8
-        eslint .
+      run: npm run lint
 
     - name: Docker lint (hadolint)
       run: |
@@ -90,23 +88,14 @@ jobs:
     # -------------------
     # 5. SECURITY SCAN (Trivy)
     # -------------------
-    - name: Scan API image
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: ${{ env.REGISTRY }}/api:${{ env.TAG }}
-        format: sarif
-        output: trivy-api.sarif
-        severity: CRITICAL
-        exit-code: 1
-
-    - name: Upload scan report
-      uses: actions/upload-artifact@v4
-      with:
-        name: trivy-report
-        path: trivy-api.sarif
+    - name: Scan all images
+      run: |
+        docker run --rm aquasec/trivy image --severity CRITICAL --exit-code 1 $REGISTRY/api:$TAG
+        docker run --rm aquasec/trivy image --severity CRITICAL --exit-code 1 $REGISTRY/frontend:$TAG
+        docker run --rm aquasec/trivy image --severity CRITICAL --exit-code 1 $REGISTRY/worker:$TAG
 
     # -------------------
-    # 6. INTEGRATION TEST (FIXED PORTS)
+    # 6. INTEGRATION TEST
     # -------------------
     - name: Start full stack
       run: docker compose up -d
@@ -120,7 +109,7 @@ jobs:
     - name: Frontend check (3000)
       run: curl -f http://localhost:3000
 
-    - name: Run integration test (job flow)
+    - name: Run integration test
       run: |
         curl -X POST http://localhost:8000/job -d '{"task":"test"}'
 
@@ -163,7 +152,7 @@ jobs:
 
         for i in {1..12}; do
           if curl -f http://localhost:8001/health; then
-            echo "Healthy → switching traffic"
+            echo "Healthy → switching"
             docker stop old_api || true
             docker rename new_api old_api
             exit 0
@@ -171,6 +160,6 @@ jobs:
           sleep 5
         done
 
-        echo "Health failed → rollback"
+        echo "Rollback"
         docker stop new_api
         exit 1
