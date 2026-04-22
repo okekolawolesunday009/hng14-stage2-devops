@@ -93,6 +93,13 @@ jobs:
         docker push $REGISTRY/frontend:$TAG
         docker push $REGISTRY/worker:$TAG
 
+    - name: Cache Trivy DB
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/trivy
+        key: trivy-db-${{ github.run_id }}
+        restore-keys: trivy-db-
+        
     # -------------------
     # 5. SECURITY SCAN (Trivy)
     # -------------------
