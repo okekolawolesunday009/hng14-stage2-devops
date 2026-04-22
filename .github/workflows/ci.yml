@@ -66,12 +66,6 @@ jobs:
     - name: Run unit tests (pytest + mocked Redis)
       run: docker run --rm api-test pytest --cov=. --cov-report=xml
 
-    - name: Upload coverage
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-report
-        path: coverage.xml
-
     # -------------------
     # 4. BUILD IMAGES
     # -------------------
@@ -157,24 +151,20 @@ jobs:
       if: always()
       run: docker compose down
 
-  # -------------------
-  # 7. DEPLOY (MAIN ONLY)
-  # -------------------
-  deploy:
-    needs: pipeline
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-
-    steps:
-
+    # -------------------
+    # 7. DEPLOY (MAIN ONLY)
+    # -------------------
     - name: Rolling deploy
+      if: github.ref == 'refs/heads/main'
       run: |
-        docker pull localhost:5000/api:${{ github.sha }}
+        # Clean up any existing test/new containers
+        docker stop new_api || true
+        docker rm new_api || true
 
         docker run -d \
           --name new_api \
           -p 8001:8000 \
-          localhost:5000/api:${{ github.sha }}
+          $REGISTRY/api:$TAG
 
         echo "Waiting for health check..."
 
@@ -182,6 +172,7 @@ jobs:
           if curl -f http://localhost:8001/health; then
             echo "Healthy → switching"
             docker stop old_api || true
+            docker rm old_api || true
             docker rename new_api old_api
             exit 0
           fi
@@ -189,5 +180,6 @@ jobs:
         done
 
         echo "Rollback"
-        docker stop new_api
+        docker stop new_api || true
+        docker rm new_api || true
         exit 1
