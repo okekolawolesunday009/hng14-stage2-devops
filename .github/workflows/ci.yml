@@ -98,9 +98,9 @@ jobs:
     # -------------------
     - name: Scan all images
       run: |
-        docker run --rm aquasec/trivy image --severity CRITICAL --exit-code 1 $REGISTRY/api:$TAG
-        docker run --rm aquasec/trivy image --severity CRITICAL --exit-code 1 $REGISTRY/frontend:$TAG
-        docker run --rm aquasec/trivy image --severity CRITICAL --exit-code 1 $REGISTRY/worker:$TAG
+        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --severity CRITICAL --exit-code 1 $REGISTRY/api:$TAG
+        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --severity CRITICAL --exit-code 1 $REGISTRY/frontend:$TAG
+        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --severity CRITICAL --exit-code 1 $REGISTRY/worker:$TAG
 
     # -------------------
     # 6. INTEGRATION TEST
