@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 import redis
 import uuid
-import os
+
 
 app = FastAPI()
 
