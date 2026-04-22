@@ -6,5 +6,5 @@ client = TestClient(app)
 
 
 def test_create_job():
-    response = client.post("/job", json={"name": "test"})
+    response = client.post("/jobs", json={"name": "test"})
     assert response.status_code == 200
