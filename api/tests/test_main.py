@@ -13,4 +13,3 @@ def test_health():
 def test_create_job():
     response = client.post("/job", json={"task": "test"})
     assert response.status_code == 200
-    
