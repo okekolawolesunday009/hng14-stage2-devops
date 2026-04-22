@@ -16,6 +16,11 @@ def create_job():
     return {"job_id": job_id}
 
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
+
 @app.get("/jobs/{job_id}")
 def get_job(job_id: str):
     status = r.hget(f"job:{job_id}", "status")

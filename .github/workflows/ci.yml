@@ -119,17 +119,30 @@ jobs:
       run: sleep 15
 
     - name: API health check (8000)
-      run: curl -f http://localhost:8000/
+      run: curl -f http://localhost:8000/health
 
     - name: Frontend check (3000)
       run: curl -f http://localhost:3000
 
     - name: Run integration test
       run: |
-        curl -X POST http://localhost:8000/jobS -d '{"NAME":"test"}'
+        # Create a job and capture the job_id
+        RESPONSE=$(curl -s -X POST http://localhost:8000/jobs -d '{"task":"test"}')
+        JOB_ID=$(echo $RESPONSE | grep -oP '(?<="job_id":")[^"]+')
+        
+        if [ -z "$JOB_ID" ]; then
+          echo "Failed to create job"
+          exit 1
+        fi
+        
+        echo "Created job: $JOB_ID"
 
+        # Poll for completion
         for i in {1..12}; do
-          STATUS=$(curl -s http://localhost:8000/jobs/status)
+          STATUS_JSON=$(curl -s http://localhost:8000/jobs/$JOB_ID)
+          STATUS=$(echo $STATUS_JSON | grep -oP '(?<="status":")[^"]+')
+          
+          echo "Current status: $STATUS"
           if [ "$STATUS" = "completed" ]; then
             echo "PASS"
             exit 0
@@ -137,7 +150,7 @@ jobs:
           sleep 5
         done
 
-        echo "FAIL"
+        echo "FAIL: Job did not complete in time"
         exit 1
 
     - name: Tear down stack
