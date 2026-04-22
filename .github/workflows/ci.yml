@@ -41,7 +41,9 @@ jobs:
 
     - name: Lint frontend
       working-directory: frontend
-      run: npx eslint .
+      run: |
+        npm install eslint@8
+        eslint .
 
     - name: Docker lint (hadolint)
       run: |
