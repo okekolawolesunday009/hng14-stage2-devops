@@ -1,8 +1,7 @@
 FROM python:3.11-slim
 
 RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y wget && \
+    apt-get install -y --no-install-recommends wget=1.21.3-1 && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
