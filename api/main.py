@@ -7,6 +7,7 @@ app = FastAPI()
 
 r = redis.Redis(host="redis", port=6379)
 
+
 @app.post("/jobs")
 def create_job():
     job_id = str(uuid.uuid4())
